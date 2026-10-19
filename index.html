@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Sanket Pawar, product designer. A tiny planet you can walk around, where each place is a project.">
+<title>Sanket Pawar Tiny Planet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one full-screen 3D planet per project; quiet HUD in the corners; the story is told in a caption card at the bottom, never in a side panel. */
+:root{
+  --ground:#F2F3F5; --surface:#FFFFFF; --ink:#1D2024; --ink-soft:#4A5058; --ink-faint:#646B74;
+  --hair:#D3D9E0; --ice:#A4D8FF; --ice-ink:#17466B; --gun:#35393C; --on-gun:#F2F3F5;
+  --display:'Fraunces',Georgia,serif; --body:'Instrument Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --shadow:0 10px 30px rgba(29,32,36,.12);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --ground:#131518; --surface:#1A1D21; --ink:#ECEEF1; --ink-soft:#B9C0C8; --ink-faint:#848B94;
+  --hair:#333941; --ice:#A4D8FF; --ice-ink:#A4D8FF; --gun:#ECEEF1; --on-gun:#131518;
+  --shadow:0 10px 30px rgba(0,0,0,.5); color-scheme:dark } }
+:root[data-theme="dark"]{
+  --ground:#131518; --surface:#1A1D21; --ink:#ECEEF1; --ink-soft:#B9C0C8; --ink-faint:#848B94;
+  --hair:#333941; --ice:#A4D8FF; --ice-ink:#A4D8FF; --gun:#ECEEF1; --on-gun:#131518;
+  --shadow:0 10px 30px rgba(0,0,0,.5); color-scheme:dark }
+
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--ground);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;overflow:hidden}
+.app{position:relative;height:100%;overflow:hidden}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:pointer;outline:none}
+button{font:inherit;color:inherit;cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--ice-ink);outline-offset:2px}
+
+.top{position:absolute;left:16px;right:16px;top:16px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;pointer-events:none}
+.top > *{pointer-events:auto}
+.who{display:flex;flex-direction:column;gap:6px;align-items:flex-start;min-width:0}
+.who b{font-family:var(--display);font-weight:500;font-size:22px;line-height:1.15;letter-spacing:-.01em}
+.who span{color:var(--ink-faint);font-size:13px}
+#tz{font-size:12px;max-width:34ch}
+.who b,.who span{text-shadow:0 0 10px color-mix(in srgb,var(--ground) 70%,transparent),0 0 2px color-mix(in srgb,var(--ground) 60%,transparent)}
+/* live time and the Day/Night switch sit together as one control */
+.seg{display:inline-flex}.seg .pill:first-child{border-radius:999px 0 0 999px}.seg .pill:last-child{border-radius:0 999px 999px 0;border-left:0}
+#live .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#E5484D;margin-right:7px;vertical-align:1px}
+#live[aria-pressed="false"] .dot{background:var(--ink-faint)}
+.pill{font-size:13px;background:var(--surface);border:1px solid var(--hair);border-radius:999px;padding:8px 14px;text-decoration:none;white-space:nowrap}
+.pill:hover{border-color:var(--ink-faint)}
+.tools{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+
+.dock{position:absolute;left:16px;right:16px;bottom:16px;display:flex;gap:16px;align-items:flex-end;pointer-events:none}
+.dock > *{pointer-events:auto}
+.pass{flex:none;width:236px;background:var(--surface);border:1px solid var(--hair);border-radius:14px;padding:12px;box-shadow:var(--shadow)}
+.pass h2{margin:0 0 6px 6px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint)}
+.pass ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+.pass li button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:6px;font-size:14px}
+.pass li button:hover{background:var(--ground)}
+.dot{flex:none;width:16px;height:16px;border-radius:50%;border:1.5px dashed var(--ink-faint);display:grid;place-items:center}
+.seen .dot{border:0;background:var(--ice)}
+.seen .dot::after{content:"";width:7px;height:3.5px;border-left:2px solid #17466B;border-bottom:2px solid #17466B;transform:rotate(-45deg) translateY(-1px)}
+
+.card{flex:1;min-width:0;max-width:640px;margin:0 auto;background:var(--surface);border:1px solid var(--hair);border-radius:16px;padding:16px 20px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow-y:auto}
+.card .e{margin:0;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint)}
+.card h3{margin:0;font-family:var(--display);font-weight:500;font-size:clamp(20px,2.4vw,26px);line-height:1.15;letter-spacing:-.012em;text-wrap:balance}
+.card p{margin:0;color:var(--ink-soft)}
+.card .mail{font-family:var(--display);font-size:19px;color:var(--ink);user-select:all;overflow-wrap:anywhere}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.acts a,.acts button{background:none;color:var(--ink);border:1px solid var(--hair);border-radius:999px;padding:8px 15px;font-weight:600;font-size:14px;text-decoration:none;display:inline-flex;gap:8px;align-items:center}
+.acts .main{background:var(--gun);color:var(--on-gun);border-color:var(--gun)}
+.acts kbd{font:600 11px var(--body);border:1px solid currentColor;border-radius:5px;padding:0 5px;opacity:.7}
+.spacer{flex:none;width:236px}
+
+.tag{position:absolute;left:0;top:0;pointer-events:none;white-space:nowrap;font-size:12px;font-weight:600;background:var(--surface);border:1px solid var(--hair);border-radius:999px;padding:3px 10px;will-change:transform;transition:opacity .2s}
+.tag.seen{border-color:var(--ice)}
+
+.veil{position:absolute;inset:0;background:var(--ground);display:grid;place-items:center;opacity:0;pointer-events:none;transition:opacity .35s}
+.veil.on{opacity:1;pointer-events:auto}
+.veil.fly{opacity:1;background:none;place-items:start center;padding-top:44vh}
+.veil.fly.off{opacity:0}
+.dock,#tags{transition:opacity .35s}
+.flying #tags,.flying .dock{opacity:0}
+.flying .dock > *{pointer-events:none}
+.veil b{font-family:var(--display);font-weight:500;font-size:clamp(32px,6vw,64px);letter-spacing:-.02em;text-align:center;padding:0 16px}
+
+.look{position:absolute;inset:0;background:color-mix(in srgb,var(--ground) 92%,transparent);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:56px 16px 24px}
+.look img{max-width:100%;max-height:100%;min-height:0;object-fit:contain;border-radius:10px;border:1px solid var(--hair);background:#fff}
+.look p{margin:0;font-size:13px;color:var(--ink-soft);text-align:center}
+.look .pill{position:absolute;right:16px;top:16px}
+
+.gate{position:absolute;inset:0;display:flex;align-items:center;padding:24px 16px;background:linear-gradient(90deg,var(--ground) 0,var(--ground) 30%,color-mix(in srgb,var(--ground) 0%,transparent) 72%);overflow-y:auto}
+.gate-in{width:min(520px,100%);margin-left:max(0px,4vw);display:flex;flex-direction:column;gap:18px}
+.gate .e{margin:0;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint)}
+.gate h1{margin:0;font-family:var(--display);font-weight:500;font-size:clamp(34px,5.4vw,60px);line-height:1.04;letter-spacing:-.02em;text-wrap:balance}
+.gate .lede{margin:0;color:var(--ink-soft);font-size:16px;max-width:46ch}
+.ways{display:flex;flex-direction:column;gap:10px}
+.way{display:grid;gap:4px;text-align:left;text-decoration:none;background:var(--surface);border:1px solid var(--hair);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+.way:hover{border-color:var(--ink)}
+.way b{font-family:var(--display);font-weight:500;font-size:22px;letter-spacing:-.01em}
+.way span{color:var(--ink-soft)}
+.way i{font-style:normal;font-weight:600;font-size:14px;margin-top:4px}
+.gate-foot{margin:0;font-size:13px;color:var(--ink-faint)}
+.gate-foot code{font-family:var(--body);user-select:all;color:var(--ink-soft)}
+.gated .top,.gated .dock,.gated #tags{display:none}
+.nogl #gl,.nogl .tag,.nogl .pass{display:none}
+
+@media (max-width:900px){.spacer{display:none}}
+@media (max-width:640px){
+  .who b{font-size:18px}
+  .who span{display:none}
+  .dock{flex-direction:column-reverse;align-items:stretch;left:12px;right:12px;bottom:12px;gap:10px}
+  .pass{width:auto;padding:8px 10px}
+  .pass h2{display:none}
+  .pass ol{flex-direction:row;overflow-x:auto;gap:4px;scrollbar-width:none}
+  .pass li button{white-space:nowrap;font-size:12px;padding:4px 6px;gap:6px}
+  .card{max-height:40vh;padding:14px 16px}
+  .gate{align-items:flex-end;background:color-mix(in srgb,var(--ground) 90%,transparent)}
+  .gate h1{font-size:32px}
+  .tools .pill{padding:6px 10px;font-size:12px}
+  .top{flex-direction:column;gap:8px}
+  .who{flex-direction:row;align-items:center;justify-content:space-between;width:100%;gap:8px}
+  .who #back{padding:6px 10px;font-size:12px}
+  .tools{justify-content:flex-start}
+}
+@media (prefers-reduced-motion:reduce){.veil{transition:none}}
+</style>
+
+<div class="app gated" id="app">
+  <canvas id="gl" tabindex="0" aria-label="A small planet you can walk on. Use arrow keys or W A S D, or hold the mouse button and the walker follows the pointer. The list of places also walks you to each one."></canvas>
+  <div id="tags"></div>
+
+  <div class="top">
+    <div class="who"><b id="title">Sanket Pawar</b><span id="sub">Product designer. This planet is my portfolio.</span><span id="tz"></span><button class="pill" id="back" hidden>← Back to my planet</button></div>
+    <div class="tools"><button class="pill" id="tour" aria-pressed="false">Quick tour</button><button class="pill" id="snd" aria-pressed="false">Sound off</button><button class="pill" id="mus" aria-pressed="false">Music off</button><span class="seg" role="group" aria-label="Sky"><button class="pill" id="live" aria-pressed="true">Live</button><button class="pill" id="mode">Night</button></span><a class="pill" id="skip" href="https://sanketp.webflow.io" target="_blank" rel="noopener">Classic site ↗</a></div>
+  </div>
+
+  <div class="dock">
+    <nav class="pass" aria-label="Places on this planet"><h2 id="count">Places</h2><ol id="list"></ol></nav>
+    <section class="card" id="card" aria-live="polite"></section>
+    <div class="spacer"></div>
+  </div>
+
+  <div class="look" id="look" hidden><button class="pill" id="lookX">Close</button><img id="lookI" alt=""><p id="lookC"></p></div>
+  <div class="veil" id="veil"><b id="veilT"></b></div>
+
+  <div class="gate" id="gate">
+    <div class="gate-in">
+      <p class="e">Sanket Pawar · Product designer</p>
+      <h1>Two ways to see my work.</h1>
+      <p class="lede">I design, build and ship digital products end to end. Pick the way that suits the time you have.</p>
+      <div class="ways">
+        <button class="way" id="explore"><b>Explore the planet</b><span>Walk a small world. Every project is a planet of its own, and my story is in the lighthouse.</span><i>Start walking →</i></button>
+        <a class="way" id="classic" href="https://sanketp.webflow.io" target="_blank" rel="noopener"><b>Go to the classic site</b><span>Pages you scroll: work, case studies and about. Best if you have a minute.</span><i>Open sanketp.webflow.io ↗</i></a>
+      </div>
+      <p class="gate-foot"><a href="https://docs.google.com/document/d/1cVGJvde0t8fMIo-ZoZ2PcEujNPQ4opPncF_J1hBx63A/preview" target="_blank" rel="noopener">Résumé</a> · <code>sanketp9499@gmail.com</code></p>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
+<script>
+(function(){
+var $=function(s){return document.querySelector(s)};
+function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
+var SITE='https://sanketp.webflow.io';
+
+/* ---------- content: every line is taken from the live site ---------- */
+var DEFS={
+ hub:{name:'Sanket Pawar',sub:'Product designer. This planet is my portfolio.',sky:0xF2F3F5,ground:[0x8FC79A,0x7DBB8C,0xA3D3A2,0x6FAE84],plaza:0xE8DFC6,scatter:'trees',
+  intro:{h:'Walk around. Each place is a world of its own.',p:['Arrow keys or W A S D. Or hold the mouse button and I follow the pointer. Or click where you want to go.'],more:[{h:'You are carrying a letter.',p:['It belongs in the mailbox of the house with the smoke. Delivering it is how you reach me.']}]},
+  stops:[
+   {id:'about',name:'My story',p:42,a:10,r:.17,h:5.4,kind:'door',to:'about',build:'lighthouse',card:{e:'About me',h:'Started curious. Learned to build. Still shipping.',p:['How I got from brand and print work to shipping whole products.']}},
+   {id:'ciie',name:'CIIE.CO',p:80,a:72,r:.2,h:3.6,kind:'door',to:'ciie',build:'studio',card:{e:'CIIE.CO · Graphic Design Intern · 2019 to 2020',h:'Where the eye came from.',p:['A year of brand, print and campaign work at the incubation centre at IIM Ahmedabad.']}},
+   {id:'ascend',name:'Ascend',p:128,a:118,r:.18,h:3.4,kind:'door',to:'ascend',build:'kiosk',card:{e:'Ascend International · Brand identity · 2023',h:'Two inks, one device, and a mark that had to work at 12mm.',p:['A brand identity and full stationery system.']}},
+   {id:'skillay',name:'Skillay',p:140,a:215,r:.23,h:6,kind:'door',to:'skillay',build:'tower',card:{e:'Skillay · Product design, solo · 12 weeks',h:'Prove what you can actually do.',p:['A skill-verification platform, taken from research to a working product.']}},
+   {id:'playground',name:'Playground',p:92,a:262,r:.19,h:3.8,kind:'door',to:'playground',build:'shed',card:{e:'Playground',h:'Small things, built to learn.',p:['AI experiments, small tools, and motion tests, kept here whether or not they worked. Job Hunter 2026 lives inside.']}},
+   {id:'home',name:'Home',p:50,a:312,r:.2,h:3.6,kind:'talk',build:'house',card:{e:'Home · Contact',h:'Got a problem worth solving?',p:['I am open to product and UX design roles, and to freelance brand and web work. Email is fastest. I reply to everything.'],mail:1,links:[['LinkedIn','https://www.linkedin.com/in/-sanket-pawar'],['Résumé','https://docs.google.com/document/d/1cVGJvde0t8fMIo-ZoZ2PcEujNPQ4opPncF_J1hBx63A/preview']]}}
+  ]},
+ about:{name:'My story',sky:0xF4F1E8,ground:[0xCBD9A8,0xBFD09C,0xD6E0B4,0xB3C690],plaza:0xEFE6CF,scatter:'trees',accent:0xF2C94C,
+  intro:{e:'About me',h:'Started curious. Learned to build. Still shipping.',p:['My name is Sanket Pawar, and I never wanted to be the designer who hands off a mockup and hopes. Follow the stones.']},
+  stops:[
+   {name:'The eye',card:{e:'Chapter 1',h:'Started with the eye',p:['Visual and brand design first: logos, layout, type, the craft of making things look right.']}},
+   {name:'Product',card:{e:'Chapter 2',h:'Moved into product and UX',p:['Research, systems and interaction design. Designing whole experiences, not just screens.']}},
+   {name:'The turn',card:{e:'Why I changed',h:'The picture was never the product.',p:['Watching a beautiful screen get lost between design and engineering never sat right. So I stopped waiting for someone else to build my ideas and learned to build them myself.']}},
+   {name:'Building',card:{e:'Chapter 3',h:'Learned to build with AI',p:['Cursor and LLMs became my build tools, with enough code literacy to direct and debug, so the design gets made real instead of handed off. Not an engineer. A designer who ships.']}},
+   {name:'Now',card:{e:'Now',h:'Designs, builds and ships end to end',p:['Often solo, with AI as a collaborator, from the first sketch to a live, running product.']}},
+   {name:'Beliefs',card:{e:'What I believe',h:'Proof beats polish.',p:['Build to understand. The right problem first. Ship at eighty percent: shipped and learning beats perfect and theoretical.'],links:[['Read the full About page',SITE+'/about']]}}
+  ]},
+ ciie:{name:'CIIE.CO',sky:0xF5F3F0,ground:[0xE6E2DA,0xDCD7CD,0xD2CCC0,0xEDEAE4],plaza:0xFFFFFF,scatter:'shapes',accent:0xD9372B,
+  decor:[{p:70,a:60,big:'5',small:'programmes'},{p:112,a:215,big:'80+',small:'participants reached'}],props:[{p:86,a:124,kind:'modules',r:.3}],
+  intro:{e:'CIIE.CO · Graphic Design Intern · 2019 to 2020',h:'Where the eye came from.',p:['A year designing the brand, print and campaign work of CIIE.CO, the incubation centre at IIM Ahmedabad. Walk up to each board.']},
+  stops:[
+   {name:'The problem',img:['ciie-booklet.jpg',1.333,'Showcase booklet designed for CIIE.CO'],card:{e:'The problem',h:'Many startups, one credible programme.',p:['A portfolio of very different startups, each with its own logo, screenshots and level of polish, had to read as one credible programme. Across print, event and web. On sprint deadlines.'],more:[{h:'Five named programmes',p:['Financial Inclusion Lab, Grand Challenge, TIDE 2.0 Challenge Grant, Innocity and the IoT Startup Showcase. 80+ programme participants reached. One house identity holding it together.']}]}},
+   {name:'The module',img:['ciie-one-pagers.jpg',1.333,'Company one-pagers built on one repeating module'],card:{e:'Approach',h:'A repeatable company module',p:['A fixed grid and one profile block, built so mismatched logos and screenshots sat quietly inside it. Adding or swapping a company became a content edit, not a layout exercise.']}},
+   {name:'The moves',img:['ciie-showcase-poster.jpg',1.333,'IoT Startup Showcase poster'],card:{e:'Approach',h:'One restrained set of moves',p:['Black, white and the CIIE red. Geometric shapes pulled from the frame of the logo. Generous white space so dense text stayed readable.']}},
+   {name:'One pass',img:['ciie-deeptech-leaflet.jpg',1.333,'Deep-tech programme leaflet'],card:{e:'Approach',h:'Decide before the file opens',p:['Sprint deadlines meant there was rarely a second round. Read the brief, set the type and colour rules for the piece, then produce the full set in one pass.']}},
+   {name:'What held',img:['ciie-merch-bottles.jpg',1.25,'CIIE.CO merchandise water bottles'],card:{e:'Impact',h:'From a 40-page booklet to a water bottle',p:['The system held across five programmes, three media and multiple cohorts. There is no conversion data behind it and I will not invent any.'],more:[{h:'Systems beat one-offs',p:['The modules built here are the same instinct behind the component libraries I build in Figma and Webflow now.']},{h:'What I skipped',p:['Writing the rules down is the cheapest part of the job and the part I skipped. It is the first thing I do now.']}],links:[['Read the full case study',SITE+'/other-work/ciie-co']]}}
+  ]},
+ ascend:{name:'Ascend International',sky:0xF3EFE7,ground:[0xDDD6C6,0xE6E0D2,0xD1C9B6,0xECE7DB],plaza:0xFFFFFF,scatter:'ascend',accent:0xF17A21,
+  decor:[{p:72,a:62,big:'2.8:1',small:'orange on white, accent only'},{p:98,a:145,big:'9.5:1',small:'navy on white'},{p:120,a:225,big:'12mm',small:'smallest the mark must work'}],props:[{p:106,a:198,kind:'corner',r:0}],
+  intro:{e:'Ascend International · Brand identity and stationery · 2023',h:'Two inks, one device, and a mark that had to work at 12mm.',p:['An identity and the everyday things that carry it: cards handed across a table, letters on paper, envelopes that land on a desk.']},
+  stops:[
+   {name:'The mark',img:['ascend-logo-concept.jpg',1.333,'Ascend logo construction: the A, the ascent, and the finished mark'],card:{e:'The mark',h:'Two ideas at once',p:['The letterform is an A, the initial of the name. The stroke sweeping through it is an ascent: a path rising and carrying past the frame.']}},
+   {name:'Two inks',img:['ascend-colour.jpg',1.333,'Ascend two-ink palette with usage ratios'],card:{e:'Approach',h:'Two inks and paper',p:['Navy #1B4582 carries the weight. Orange #F17A21 marks one thing per surface and stops. Orange measures 2.8:1 against white, so it could only ever be an accent.']}},
+   {name:'The device',img:['ascend-business-cards.jpg',1.333,'Ascend business cards with the quarter-circle corner device'],card:{e:'Approach',h:'One device instead of a repeated logo',p:['A quarter-circle corner, navy over orange. It anchors the bottom-right of a card, the top-right of a letterhead and the flap of an envelope.']}},
+   {name:'One colour',img:['ascend-monochrome.jpg',1.333,'One-colour versions of the Ascend mark'],card:{e:'Test',h:'Test it as a single block',p:['One-colour versions for single-ink print, engraving and stamps. If the silhouette holds, the mark holds.']}},
+   {name:'The system',img:['ascend-stationery.jpg',1.333,'Ascend stationery set seen from above'],card:{e:'Impact',h:'A system beats a logo',p:['It shipped as a complete working system: mark, one-colour and reversed artwork, clear-space and minimum-size rules, a two-ink palette and the corner device.'],more:[{h:'Constraint was the design decision',p:['Two colours used with discipline read as more expensive than five. Print teaches precision: spot colours, bleed, and how ink behaves on uncoated stock have no undo.']},{h:'What I would do differently',p:['Write the rules down at the time. The clear space, the minimum sizes and the misuse cases all existed in my head, but never as a document.']}],links:[['Read the full case study',SITE+'/other-work/ascend-international']]}}
+  ]},
+ skillay:{name:'Skillay',sky:0xEEF3FB,ground:[0xDCE6F5,0xCFDCF0,0xE6EDF8,0xC3D3EC],plaza:0xFFFFFF,scatter:'wire',accent:0x2563EB,
+  decor:[{p:98,a:338,big:'173',small:'frames designed'},{p:112,a:40,big:'417',small:'prototype connections'},{p:126,a:108,big:'108',small:'routes live'},{p:140,a:168,big:'94%',small:'match score, cut from the build',strike:1}],
+  intro:{e:'Skillay · Product design, solo · 12 weeks · 2026',h:'Prove what you can actually do.',p:['A skill-verification platform for designers and engineers. I took it from research to a working product. Follow the stones from problem to live app.']},
+  stops:[
+   {name:'Problem',card:{e:'Problem',h:'Portfolios show outcomes. Hiring needs process.',p:['Design hiring runs on proxies: résumés, portfolios and unpaid take-homes. The bet: make one recorded working session, with AI use declared, criteria published and the score contestable, worth more than any résumé.'],more:[{h:'Portfolios are unverifiable.',p:['A polished case study proves someone has one, not that they did the work, or how. Recruiters cannot see process, which is the thing that predicts performance on the job.']},{h:'Take-homes extract free labor.',p:['Unpaid, unstandardized, and scored by vibes. And AI use is a silent variable: everyone uses AI tools, nobody can talk about it in hiring.']}]}},
+   {name:'Daniel',build:'person',coat:0x2563EB,scarf:0xF4F5F7,card:{e:'Persona · Candidate',h:'Daniel Brooks, frontend engineer, Toronto',p:['"I care about the craft between the brief and the ship: clean state, real edge cases, and interfaces that feel fast."'],more:[{h:'What Daniel needs',p:['Proof of skill that travels between applications. To show the process, not just the shipped file. His pain: a portfolio and résumé doubted since generative AI, and unpaid take-homes repeated per company.']}]}},
+   {name:'Maya',build:'person',coat:0xC98B4A,scarf:0x35393C,card:{e:'Persona · Recruiter',h:'Maya Thompson, recruiter at Meridian Labs',p:['"Show me the same brief, scored the same way, for every candidate."'],more:[{h:'What Maya needs',p:['Comparable signal across every applicant, and defensible, documented decisions. Her pain: ad-hoc take-homes that cannot be compared, and interviews wasted re-testing basics.']}]}},
+   {name:'Principles',card:{e:'Research',h:'Four principles, carried from copy to database',p:['Process over output. Transparency as architecture. AI declared, not banned. Never claim what you did not see.'],more:[{h:'Process over output',p:['The recording is what gets reviewed, not just the final file. Session screens say it plainly: "Narrate your reasoning."']},{h:'AI declared, not banned',p:['Judgement with the tools is what is scored. Flagging is event-based (pastes, focus loss), never appearance-based.']},{h:'Never claim what you did not see',p:['The AI report carries its own section: "What this report did not assess." This later became a hard constraint on the real scoring pipeline.']}]}},
+   {name:'Wireframes',img:['skillay-wireframe-w08.jpg',1.447,'W08 Credentials, lo-fi wireframe'],img2:['skillay-hifi-w08.jpg'],card:{e:'Design · Wireframes',h:'Every screen earned its pixels in pencil first',p:['A full lo-fi pass came before hi-fi: the same screen inventory, structure only. Grey boxes settle the layout argument before any styling exists. The board flips between the wireframe and the finished screen.'],more:[{h:'Honest iteration',p:['Early browse screens had a permanently expanded filter panel. Density testing pushed the hi-fi to one-at-a-time dropdown menus instead.']}]}},
+   {name:'Hi-fi',img:['skillay-hifi-browse.jpg',.967,'W01 Browse challenges, hi-fi with quick view'],card:{e:'Design · 173 frames',h:'The interface argues its own ethics',p:['The distinctive design material in Skillay is copy carrying real commitments. Appeal screens show how often contested scores went up and how often they went down (the mockups use sample figures, 11% and 3%).']}},
+   {name:'Prototype',img:['skillay-prototype-filters.jpg',.967,'Prototype with a filter menu open'],card:{e:'Design · Prototype',h:'Eight journeys, and the filters actually open',p:['Not a slideshow: 68 frames wired with 417 connections, and a walked graph proving zero dead ends.']}},
+   {name:'Live app',img:['skillay-live.jpg',1.398,'The live Skillay app, browse challenges'],card:{e:'Build',h:'Built for real, and the build audited the design',p:['108 routes live. The 94% match shown in the design was cut: no matching model exists, so it is not in the build. Building turned out to be the sharpest design review I have had.'],more:[{h:'What the build found',p:['A phantom field: twelve queries selected a column that never existed, and a silent demo-data fallback masked it. A missing policy: candidates could not read their own job applications.']},{h:'What I would do differently',p:['Diagnose before treating. Scope the vertical slice first: one complete loop, brief to session to report. Test with strangers earlier.']}],links:[['Open the live app','https://skillay.vercel.app'],['Read the full case study',SITE+'/skillay']]}}
+  ]},
+ playground:{name:'Playground',sub:'Small things, built to learn.',sky:0xF1F0F6,ground:[0xD9D6E8,0xCDC9E0,0xE4E1EF,0xC1BCD8],plaza:0xFFFFFF,scatter:'shapes',accent:0xA4D8FF,
+  intro:{e:'Playground',h:'Small things, built to learn.',p:['When I\'m not deep in a case study, I\'m turning small ideas into things I can click. AI experiments, small tools, and motion tests, kept here whether or not they worked.']},
+  stops:[
+   {id:'hunter',name:'Job Hunter 2026',kind:'door',to:'hunter',build:'shed',r:.19,h:3.8,card:{e:'AI tool · 2026',h:'Job Hunter 2026',p:['A job search, designed as one system. An AI-assisted pipeline I designed and built for my own search.'],links:[['Playground on the classic site',SITE+'/playground']]}}
+  ]},
+ hunter:{name:'Job Hunter 2026',parent:'playground',sky:0xEDF0F3,ground:[0xDCE3EA,0xCFD8E1,0xE6ECF1,0xC4CFDA],plaza:0xF7F9FB,scatter:'mail',accent:0xA4D8FF,
+  intro:{e:'Playground · Job Hunter 2026',h:'A job search, designed as one system.',p:['A self-initiated, AI-assisted pipeline that scrapes roles, tailors every résumé and cover letter, applies, and tracks it all. Designed and built solo.']},
+  stops:[
+   {name:'Problem',card:{e:'Problem',h:'A fragmented, repetitive grind',p:['Job boards, spreadsheets, and re-tailoring the same résumé a hundred ways.']}},
+   {name:'Approach',card:{e:'Approach',h:'Every constraint mapped to a build decision',p:['Manual tailoring does not scale, so each résumé and cover letter is generated from a template. Status was scattered across five tools, so one tracker is the single source of truth.']}},
+   {name:'Takeaway',card:{e:'Takeaway',h:'Building it is a design skill',p:['Deciding what the system should do, and refuse to do, was the design work. Python, Playwright and Claude Code are what it runs on, not languages I would claim to master.']}},
+   {name:'Next',card:{e:'Reflection',h:'What is next',p:['Add outcome tracking: measure interview rate against tailoring quality.'],links:[['Read about it',SITE+'/playground/job-hunter-2026']]}}
+  ]}
+};
+/* case-study planets: lay the stops out as a spiral, add the way back */
+Object.keys(DEFS).forEach(function(k){if(k==='hub')return;var d=DEFS[k],n=d.stops.length;
+  d.stops.forEach(function(s,i){s.id=s.id||'s'+i;s.p=n>1?48+84*i/(n-1):70;s.a=20+i*(n>5?68:80);if(s.kind==='door')return;s.kind='show';s.build=s.build||(s.img?'board':'sign');s.r=s.img?.2:s.build==='person'?.07:.1});
+  var up=d.parent||'hub',upn=up==='hub'?'my planet':DEFS[up].name;
+  d.stops.push({id:'exit',name:'Way back',p:26,a:180,r:.1,h:3.4,kind:'exit',to:up,build:'portal',card:{e:'Way back',h:'Back to '+upn,p:[up==='hub'?'The other worlds are a short walk from here.':'One step up, back to the '+upn+'.']}})});
+
+/* ---------- state ---------- */
+var seen={}, cur=null, worlds={}, near=null, busy=false, lookOpen=false, primary=null;
+try{JSON.parse(localStorage.getItem('sp-planet-seen2')||'[]').forEach(function(k){seen[k]=1})}catch(e){}
+function mark(k){if(seen[k])return;seen[k]=1;try{localStorage.setItem('sp-planet-seen2',JSON.stringify(Object.keys(seen)))}catch(e){} paintList()}
+function skey(s){return s.kind==='door'?'w:'+s.to:cur.key+':'+s.id}
+
+/* ---------- three ---------- */
+var R=10, UP=new THREE.Vector3(0,1,0), canvas=$('#gl'), renderer;
+try{renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true})}catch(e){renderer=null}
+if(!renderer){$('#app').classList.add('nogl');var c0=$('#card');c0.appendChild(el('h3',null,'Your browser could not draw the planet.'));var a0=el('div','acts'),l0=el('a','main','See all the work');l0.href=SITE+'/projects';l0.target='_blank';l0.rel='noopener';a0.appendChild(l0);c0.appendChild(a0);return}
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+var scene=new THREE.Scene(); scene.background=new THREE.Color(0xF2F3F5);
+var camera=new THREE.PerspectiveCamera(40,1,.1,220);
+var hemi=new THREE.HemisphereLight(0xffffff,0xcfd6de,.52); scene.add(hemi);
+var sun=new THREE.DirectionalLight(0xfff4e0,.62); sun.position.set(9,30,12); sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048); var sc=sun.shadow.camera; sc.left=-15;sc.right=15;sc.top=15;sc.bottom=-15;sc.near=5;sc.far=60; sun.shadow.bias=-.0015; scene.add(sun);
+var maxAni=renderer.capabilities.getMaxAnisotropy(), loader=new THREE.TextureLoader();
+
+function warm(t){try{renderer.initTexture(t)}catch(e){}}
+function mat(c,o){return new THREE.MeshPhongMaterial(Object.assign({color:c,flatShading:true,shininess:0,specular:0x000000},o||{}))}
+function mesh(g,m){var x=new THREE.Mesh(g,m&&m.isMaterial?m:mat(m));x.castShadow=true;x.receiveShadow=true;return x}
+function box(w,h,d,c,x,y,z){var m=mesh(new THREE.BoxGeometry(w,h,d),c);m.position.set(x||0,(y||0)+h/2,z||0);return m}
+function cyl(rt,rb,h,c,x,y,z,seg){var m=mesh(new THREE.CylinderGeometry(rt,rb,h,seg||8),c);m.position.set(x||0,(y||0)+h/2,z||0);return m}
+function ball(r,c,x,y,z,d){var m=mesh(new THREE.IcosahedronGeometry(r,d==null?1:d),c);m.position.set(x||0,y||0,z||0);return m}
+function dir(p,a){p*=Math.PI/180;a*=Math.PI/180;return new THREE.Vector3(Math.sin(p)*Math.sin(a),Math.cos(p),-Math.sin(p)*Math.cos(a))}
+var seed=612; function rnd(){seed|=0;seed=seed+0x6D2B79F5|0;var t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}
+function rndDir(){var u=rnd()*2-1,t=rnd()*6.283,s=Math.sqrt(1-u*u);return new THREE.Vector3(s*Math.cos(t),u,s*Math.sin(t))}
+
+var WALL=0xF4F5F7, GUN=0x35393C, ICE=0xA4D8FF, WOOD=0x7A6351;
+var winMat=mat(0xBFD9EC), cloudMat=mat(0xffffff,{transparent:true,opacity:.9}), lineMat=new THREE.LineDashedMaterial({color:0x35393C,dashSize:.16,gapSize:.1}), starMat=new THREE.PointsMaterial({color:0xECEEF1,size:.28,transparent:true,opacity:0}), glowMat=mat(ICE,{emissive:0x4FA8E8});
+var starGeo=(function(){var p=new Float32Array(900*3);for(var i=0;i<900;i++){var d=rndDir().multiplyScalar(70+rnd()*20);p[i*3]=d.x;p[i*3+1]=d.y;p[i*3+2]=d.z}var g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(p,3));return g})();
+function win(w,h,x,y,z,ry){var m=new THREE.Mesh(new THREE.BoxGeometry(w,h,.06),winMat);m.position.set(x,y,z);m.rotation.y=ry||0;return m}
+function wire(w,h,d){var l=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w,h,d)),lineMat);l.computeLineDistances();return l}
+
+/* ---------- things that stand on a planet ---------- */
+var BUILD={
+ lighthouse:function(g,W){g.add(cyl(.55,.8,3.4,WALL,0,0,0,10));g.add(cyl(.62,.7,.5,0xD9534F,0,1.2,0,10));g.add(cyl(.7,.7,.14,GUN,0,3.4,0,10));
+  var l=new THREE.Mesh(new THREE.CylinderGeometry(.42,.42,.6,8),winMat);l.position.y=3.84;g.add(l);var r=mesh(new THREE.ConeGeometry(.66,.6,8),GUN);r.position.y=4.44;g.add(r);
+  g.add(box(.36,.7,.08,WOOD,0,0,.78));g.add(box(.9,.1,.5,WOOD,1.5,.22,.6));g.add(box(.08,.22,.4,WOOD,1.15,0,.6));g.add(box(.08,.22,.4,WOOD,1.85,0,.6));return 3.6},
+ studio:function(g){g.add(box(2.4,1.5,1.9,WALL,0,0,0));g.add(box(2.7,.18,2.2,GUN,0,1.5,0));g.add(box(.5,.9,.08,WOOD,-.6,0,.96));g.add(win(.7,.55,.45,.9,.96));
+  var p=new THREE.Group();p.add(cyl(.2,.2,2.3,0xF2C94C,0,.45,0,6));var t=mesh(new THREE.ConeGeometry(.2,.45,6),0xEAD2B0);t.rotation.x=Math.PI;t.position.y=.225;p.add(t);
+  var ld=mesh(new THREE.ConeGeometry(.07,.16,6),GUN);ld.rotation.x=Math.PI;ld.position.y=.08;p.add(ld);p.add(cyl(.21,.21,.18,0xE58F8F,0,2.75,0,6));p.position.set(1.75,0,.5);p.rotation.z=-.12;g.add(p);
+  g.add(box(.08,1.3,.08,WOOD,-1.9,0,.9));g.add(box(.08,1.3,.08,WOOD,-1.1,0,.9));g.add(box(1.1,.8,.06,WALL,-1.5,.6,.95));
+  [0x4FC3E8,0xE85C9A,0xF2C94C,GUN].forEach(function(c,i){g.add(box(.2,.56,.03,c,-1.86+i*.24,.72,1))});return 1.4},
+ kiosk:function(g){var N=0x1B4582,O=0xF17A21;g.add(box(1.8,1.6,1.6,N,0,0,0));g.add(box(2.1,.14,1.9,WALL,0,1.6,0));var aw=box(1.9,.1,.8,O,0,1.15,1.05);aw.rotation.x=.3;g.add(aw);g.add(win(1.1,.55,0,.85,.81));
+  g.add(cyl(.04,.04,3,WALL,1.25,0,-.3,6));g.add(box(.7,.42,.04,O,1.62,2.5,-.3));g.add(box(.6,.08,.42,WALL,-1.45,0,.7));g.add(box(.6,.08,.42,0xE9ECF0,-1.4,.08,.74));g.add(box(.6,.08,.42,WALL,-1.47,.16,.68));g.add(box(.6,.02,.14,O,-1.47,.24,.68));return 1.3},
+ tower:function(g,W){g.add(box(2,4.2,2,WALL,.3,0,0));g.add(box(2.2,.2,2.2,GUN,.3,4.2,0));g.add(box(.9,.5,.9,0x2563EB,.3,4.4,0));
+  for(var r=0;r<5;r++)for(var c=0;c<3;c++){var y=.75+r*.72;g.add(win(.36,.42,-.3+c*.6,y,1.01));g.add(win(.36,.42,-.3+c*.6,y,-1.01));g.add(win(.36,.42,1.31,y,-.6+c*.6,Math.PI/2));g.add(win(.36,.42,-.71,y,-.6+c*.6,Math.PI/2))}
+  var wf=wire(1.5,2.4,1.5);wf.position.set(-2.1,1.2,.2);g.add(wf);var w2=wire(1.5,.02,1.5);w2.position.set(-2.1,1.2,.2);g.add(w2);
+  g.add(cyl(.07,.07,5.4,0xF2C94C,-.95,0,-1.1,6));g.add(box(3.6,.1,.1,0xF2C94C,-1.6,5.2,-1.1));g.add(box(.5,.3,.3,GUN,-.2,5.05,-1.1));g.add(cyl(.015,.015,2,GUN,-2.6,3.2,-1.1,4));
+  var slab=box(.9,.6,.06,WALL,-2.6,2.6,-1.1);g.add(slab);W.anim.push(function(t){slab.position.y=2.9+Math.sin(t*.8)*.25});return 2},
+ shed:function(g,W){g.add(box(2.2,1.3,1.7,0xE9ECF0,0,0,0));var rf=box(2.5,.14,2,GUN,0,1.45,0);rf.rotation.z=.16;g.add(rf);g.add(box(.9,.95,.06,GUN,-.35,0,.86));g.add(win(.5,.4,.65,.8,.86));
+  g.add(cyl(.05,.05,1.4,GUN,.8,1.4,-.4,6));var d=mesh(new THREE.ConeGeometry(.5,.28,10,1,true),mat(WALL,{side:THREE.DoubleSide}));d.position.set(.8,2.9,-.4);d.rotation.set(.9,0,.3);g.add(d);
+  var b=new THREE.Mesh(new THREE.IcosahedronGeometry(.08,0),glowMat);b.position.set(.8,3.1,-.4);g.add(b);W.anim.push(function(t){b.visible=(t%1.4)<.7});
+  for(var i=0;i<4;i++){var e=box(.34,.03,.24,WALL,-1.5-i*.42,.02,.9-i*.08);e.rotation.y=i*.4;g.add(e)}g.add(box(.5,.5,.5,WOOD,1.5,0,.7));g.add(box(.5,.5,.5,0x8A705C,1.45,.5,.72));return 1.2},
+ house:function(g,W){g.add(box(2.1,1.5,1.9,WALL,0,0,0));var rf=mesh(new THREE.ConeGeometry(1.75,1.1,4),GUN);rf.rotation.y=Math.PI/4;rf.position.y=2.05;g.add(rf);
+  g.add(box(.3,.8,.3,0xC9837A,.55,1.7,-.3));g.add(box(.5,.95,.06,ICE,0,0,.96));g.add(win(.45,.45,-.65,.85,.96));g.add(win(.45,.45,.65,.85,.96));
+  var pf=[];for(var i=0;i<3;i++){var p=new THREE.Mesh(new THREE.IcosahedronGeometry(.18,0),cloudMat);g.add(p);pf.push(p)}
+  W.anim.push(function(t){for(var j=0;j<3;j++){var ph=(t*.35+j/3)%1;pf[j].position.set(.55+ph*.5,2.6+ph*1.4,-.3);pf[j].scale.setScalar(.5+ph*.9)}});
+  g.add(cyl(.05,.05,.8,WOOD,1.7,0,1.2,6));g.add(box(.5,.3,.32,0xD9534F,1.7,.8,1.2));g.add(box(.04,.3,.16,WALL,1.97,.95,1.2));return 1.3},
+ board:function(g,W,s){var a=s.img[1],w=3.8,h=w/a;if(h>3.3){h=3.3;w=h*a}
+  g.add(box(.12,h+.7,.12,GUN,-w/2+.25,0,-.12));g.add(box(.12,h+.7,.12,GUN,w/2-.25,0,-.12));g.add(box(w+.24,h+.24,.12,WALL,0,.58,0));
+  var tx=loader.load('assets/'+s.img[0],warm);tx.anisotropy=maxAni;var p=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tx}));p.position.set(0,.7+h/2,.07);g.add(p);
+  if(s.img2){var t2=loader.load('assets/'+s.img2[0],warm);t2.anisotropy=maxAni;W.anim.push(function(t){var m=(t%6)<3?tx:t2;if(p.material.map!==m){p.material.map=m;p.material.needsUpdate=true}})}
+  g.add(box(w+.24,.08,.16,W.def.accent,0,.5,0));s.h=h+1.5;s.face=true;return 0},
+ sign:function(g,W,s){g.add(cyl(.07,.09,1.7,WOOD,0,0,0,6));g.add(box(1.5,.62,.1,WALL,0,1.15,.06));g.add(box(1.5,.1,.12,W.def.accent,0,1.15,.06));g.add(box(.9,.07,.02,GUN,-.2,1.5,.12));g.add(box(.6,.07,.02,0xB4BCC6,-.35,1.36,.12));
+  var o=ball(.2,mat(W.def.accent),0,2.05,0,0);g.add(o);W.anim.push(function(t){o.rotation.y=t;o.position.y=2.05+Math.sin(t*2)*.06});s.h=3;s.face=true;return 0},
+ person:function(g,W,s){var f=figure(s.coat,s.scarf);f.g.scale.setScalar(1.3);g.add(f.g);W.anim.push(function(t){f.g.position.y=Math.abs(Math.sin(t*2+s.p))*.05;f.arms[0].rotation.x=-1.2+Math.sin(t*5)*.25});s.h=2.5;s.face=true;return 0},
+ portal:function(g,W,s){g.add(box(.22,2.3,.22,GUN,-.75,0,0));g.add(box(.22,2.3,.22,GUN,.75,0,0));g.add(box(1.94,.22,.22,GUN,0,2.3,0));
+  var p=new THREE.Mesh(new THREE.PlaneGeometry(1.3,2.3),new THREE.MeshBasicMaterial({color:0xA4D8FF,transparent:true,opacity:.55,side:THREE.DoubleSide}));p.position.y=1.15;g.add(p);
+  W.anim.push(function(t){p.material.opacity=.45+Math.sin(t*2.2)*.15});s.face=true;return 0}
+};
+function statTex(big,small,strike){var c=document.createElement('canvas');c.width=640;c.height=400;var tx=new THREE.CanvasTexture(c);
+  function draw(){var x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,640,400);x.fillStyle='#1D2024';x.textAlign='center';x.font='500 '+(big.length>4?150:200)+'px Fraunces, Georgia, serif';x.fillText(big,320,230);
+    if(strike){x.strokeStyle='#D33030';x.lineWidth=14;x.beginPath();x.moveTo(100,250);x.lineTo(540,95);x.stroke()}
+    x.fillStyle='#646B74';x.font='600 30px "Instrument Sans", system-ui, sans-serif';x.fillText(small.toUpperCase(),320,330);tx.needsUpdate=true}
+  draw();try{document.fonts.load('500 200px Fraunces').then(draw);document.fonts.load('600 30px "Instrument Sans"').then(draw)}catch(e){}return tx}
+function figure(coatC,scarfC){var g=new THREE.Group(),L=[],A=[],coat=mat(coatC),skin=mat(0xE8C6A5),dark=mat(0x23262A);
+  g.add(cyl(.2,.28,.58,coat,0,.34,0,8));g.add(cyl(.29,.3,.08,coat,0,.3,0,8));
+  g.add(ball(.21,skin,0,1.12,0,1));var hair=ball(.22,dark,0,1.19,-.04,1);hair.scale.set(1,.72,1);g.add(hair);g.add(box(.3,.08,.1,dark,0,1.2,.14));
+  [-1,1].forEach(function(s){var e=new THREE.Mesh(new THREE.IcosahedronGeometry(.028,0),dark);e.position.set(s*.08,1.12,.2);g.add(e)});
+  g.add(box(.46,.1,.46,mat(scarfC),0,.86,0));var tail=box(.12,.3,.05,mat(scarfC),.12,.6,-.24);tail.rotation.x=.25;g.add(tail);
+  [-1,1].forEach(function(s){var l=new THREE.Group();l.position.set(s*.1,.36,0);l.add(box(.12,.3,.13,dark,0,-.3,0));l.add(box(.14,.08,.22,mat(0x8A705C),0,-.36,.04));g.add(l);L.push(l);
+    var a=new THREE.Group();a.position.set(s*.28,.86,0);a.add(box(.09,.34,.1,coat,0,-.34,0));var h=new THREE.Mesh(new THREE.IcosahedronGeometry(.065,0),skin);h.position.y=-.4;h.castShadow=true;a.add(h);g.add(a);A.push(a)});
+  return {g:g,legs:L,arms:A}}
+var PROPS={
+ modules:function(g){var lg=[0x2563EB,0xF2C94C,0x2E7D32,0xE85C9A,0x1D2024];for(var i=-2;i<=2;i++){var x=i*1.15;
+   g.add(box(.06,.5,.06,GUN,x-.35,0,0));g.add(box(.06,.5,.06,GUN,x+.35,0,0));g.add(box(.9,1.2,.06,WALL,x,.5,0));g.add(box(.9,.16,.08,0x1D2024,x,1.54,0));
+   g.add(box(.26,.26,.08,lg[i+2],x-.22,1.16,0));g.add(box(.62,.05,.08,0xB4BCC6,x,1,0));g.add(box(.62,.05,.08,0xB4BCC6,x,.88,0));g.add(box(.4,.05,.08,0xB4BCC6,x-.11,.76,0));g.add(box(.3,.06,.08,0xD9372B,x-.16,.58,0))}},
+ corner:function(g){g.add(box(3.2,.06,2.1,0xFFFFFF,1.5,.02,.95));
+   var o=mesh(new THREE.CylinderGeometry(2,2,.12,20,1,false,0,Math.PI/2),mat(0xF17A21,{side:THREE.DoubleSide}));o.position.y=.15;g.add(o);
+   var n=mesh(new THREE.CylinderGeometry(1.5,1.5,.3,20,1,false,0,Math.PI/2),mat(0x1B4582,{side:THREE.DoubleSide}));n.position.y=.25;g.add(n)}
+};
+var SCATTER={
+ trees:function(i){var g=new THREE.Group(),lf=[0x5E9E7E,0x4F8F74,0x74AE8A],t=cyl(.09,.12,.5,WOOD,0,0,0,5);g.add(t);
+  if(rnd()<.65){var c1=mesh(new THREE.ConeGeometry(.55,1.1,6),lf[i%3]);c1.position.y=.95;g.add(c1);var c2=mesh(new THREE.ConeGeometry(.4,.8,6),lf[(i+1)%3]);c2.position.y=1.5;g.add(c2)}else g.add(ball(.6,lf[i%3],0,1,0,0));return g},
+ shapes:function(i){var g=new THREE.Group(),c=[0x1D2024,0xFFFFFF,0xD9372B,0x1D2024,0xFFFFFF][i%5],k=i%3;
+  if(k===0)g.add(box(.7,.7,.7,c));else if(k===1)g.add(cyl(.4,.4,.9,c,0,0,0,14));else g.add(ball(.45,c,0,.45,0,2));return g},
+ ascend:function(i){var g=new THREE.Group(),c=i%9===0?0xF17A21:0x1B4582,k=i%3;
+  if(k===0){var q=mesh(new THREE.CylinderGeometry(.7,.7,.5,12,1,false,0,Math.PI/2),mat(c,{side:THREE.DoubleSide}));q.position.y=.25;g.add(q)}else if(k===1){var co=mesh(new THREE.ConeGeometry(.4,1.2,4),c);co.position.y=.6;g.add(co)}else g.add(box(.9,.06,.6,0xFFFFFF,0,0,0));return g},
+ wire:function(i){var g=new THREE.Group(),k=i%4;
+  if(k===0){var w=wire(.8,.8+rnd(),.8);w.position.y=.6;g.add(w)}else if(k===1)g.add(box(.7,.5+rnd()*.8,.7,0xFFFFFF));else if(k===2)g.add(box(.5,.5,.5,0x2563EB));else{g.add(box(.9,.06,.6,0xFFFFFF));g.add(box(.5,.04,.1,0x2563EB,-.1,.06,.15))}return g},
+ mail:function(i){var g=new THREE.Group(),k=i%3;
+  if(k===0){g.add(box(.6,.05,.42,0xFFFFFF));g.add(box(.6,.02,.12,ICE,0,.05,0))}else if(k===1){g.add(cyl(.04,.04,1.6,GUN,0,0,0,5));var gb=new THREE.Mesh(new THREE.IcosahedronGeometry(.08,0),glowMat);gb.position.y=1.65;g.add(gb)}else g.add(box(.6,.6,.6,i%2?WOOD:0x8A705C));return g}
+};
+
+function makeWorld(key){
+  var def=DEFS[key], W={key:key,def:def,planet:new THREE.Group(),moons:[],solids:[],stops:def.stops,lamps:[],anim:[],pop:1}, P=W.planet;
+  function place(g,n,spin){g.quaternion.setFromUnitVectors(UP,n);g.rotateY(spin||0);g.position.copy(n).multiplyScalar(R);P.add(g);return g}
+  def.stops.forEach(function(s){s.n=dir(s.p,s.a)});
+  var route=[UP.clone()].concat(def.stops.filter(function(s){return s.kind!=='exit'}).map(function(s){return s.n})), pts=[];
+  if(key==='hub')route.push(UP.clone());
+  for(var i=0;i<route.length-1;i++){var a=route[i],b=route[i+1],ang=a.angleTo(b),steps=Math.floor(ang/.085);
+    for(var k=1;k<steps;k++){var t=k/steps;if(t*ang<.2||(1-t)*ang<.26)continue;var s1=Math.sin((1-t)*ang)/Math.sin(ang),s2=Math.sin(t*ang)/Math.sin(ang);pts.push(a.clone().multiplyScalar(s1).add(b.clone().multiplyScalar(s2)).normalize())}}
+  /* ground */
+  var g=new THREE.IcosahedronGeometry(R,9),pos=g.attributes.position,col=new Float32Array(pos.count*3),pal=def.ground.map(function(c){return new THREE.Color(c)}),plz=new THREE.Color(def.plaza),c=new THREE.Vector3(),cc=new THREE.Color();
+  for(var f=0;f<pos.count;f+=3){c.set(0,0,0);for(var j=0;j<3;j++){c.x+=pos.getX(f+j);c.y+=pos.getY(f+j);c.z+=pos.getZ(f+j)}c.normalize();
+    var n=Math.sin(c.x*3.1+1.3)*Math.sin(c.y*2.7+.4)+Math.sin(c.z*3.7+c.x*1.9)*.6+(rnd()-.5)*.5;cc.copy(pal[n>.6?2:n>0?0:n>-.6?1:3]);
+    var pl=c.dot(UP)>Math.cos(.14);def.stops.forEach(function(s){if(c.dot(s.n)>Math.cos(s.r+.07))pl=true});if(pl)cc.copy(plz).offsetHSL(0,0,(rnd()-.5)*.03);
+    for(j=0;j<3;j++){col[(f+j)*3]=cc.r;col[(f+j)*3+1]=cc.g;col[(f+j)*3+2]=cc.b}}
+  g.setAttribute('color',new THREE.BufferAttribute(col,3));W.ground=new THREE.Mesh(g,mat(0xffffff,{vertexColors:true}));W.ground.receiveShadow=true;P.add(W.ground);
+  /* stones */
+  var sg=new THREE.CylinderGeometry(.2,.24,.06,6),sm=mat(key==='hub'||key==='about'?0xF4F1E6:0xB4BCC6);
+  pts.forEach(function(n){var s=new THREE.Mesh(sg,sm);s.receiveShadow=true;var o=new THREE.Group();o.add(s);s.scale.setScalar(.8+rnd()*.5);place(o,n,rnd()*3)});
+  /* stops */
+  def.stops.forEach(function(s,i){var grp=new THREE.Group(),ly=BUILD[s.build](grp,W,s);
+    
+    place(grp,s.n,key==='hub'?[.3,.5,-.6,2.2,1.1,-2.4][i]:0);s.group=grp;s.q0=new THREE.Quaternion().setFromUnitVectors(UP,s.n);s.q0i=s.q0.clone().invert();W.solids.push({n:s.n,r:s.r})});
+  /* numbers that stand beside the path */
+  var dec=[];W.faces=[];(def.decor||[]).forEach(function(dc){var n=dir(dc.p,dc.a),grp=new THREE.Group();grp.add(box(.1,1.2,.1,GUN,-.9,0,-.08));grp.add(box(.1,1.2,.1,GUN,.9,0,-.08));grp.add(box(2.6,1.7,.1,WALL,0,.9,0));
+    var pm=new THREE.Mesh(new THREE.PlaneGeometry(2.4,1.5),new THREE.MeshBasicMaterial({map:statTex(dc.big,dc.small,dc.strike)}));pm.position.set(0,1.75,.06);grp.add(pm);place(grp,n,0);
+    var q0=new THREE.Quaternion().setFromUnitVectors(UP,n);W.faces.push({group:grp,q0:q0,q0i:q0.clone().invert()});W.solids.push({n:n,r:.1});dec.push(n)});
+  (def.props||[]).forEach(function(pr){var n=dir(pr.p,pr.a),grp=new THREE.Group();PROPS[pr.kind](grp);place(grp,n,.6);if(pr.r)W.solids.push({n:n,r:pr.r});dec.push(n)});
+  /* pond on the home planet */
+  var pn=null;if(key==='hub'){pn=dir(100,178);var pg=new THREE.Group(),pm=new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,.08,9),mat(ICE));pm.receiveShadow=true;pm.position.y=.02;pm.scale.z=.75;pg.add(pm);place(pg,pn,.4);W.solids.push({n:pn,r:.14})}
+  function clear(n,pad){if(n.dot(UP)>Math.cos(.24))return false;if(pn&&n.dot(pn)>Math.cos(.2))return false;
+    for(var i=0;i<def.stops.length;i++)if(n.dot(def.stops[i].n)>Math.cos(def.stops[i].r+.16))return false;
+    for(i=0;i<dec.length;i++)if(n.dot(dec[i])>Math.cos(.34))return false;
+    for(i=0;i<pts.length;i++)if(n.dot(pts[i])>Math.cos(pad))return false;return true}
+  var mk=SCATTER[def.scatter],want=key==='hub'?56:key==='about'?44:34;
+  for(var q=0,made=0;q<500&&made<want;q++){var nn=rndDir();if(!clear(nn,.1))continue;made++;var o=mk(made),sc=.8+rnd()*.7;o.scale.setScalar(sc);place(o,nn,rnd()*6);W.solids.push({n:nn,r:.04*sc+.02})}
+  if(def.scatter==='trees'){var fm=[mat(0xFFFFFF),mat(0xF2C94C),mat(0xF4B6C2)],fg=new THREE.IcosahedronGeometry(.07,0);
+    for(q=0,made=0;q<300&&made<60;q++){nn=rndDir();if(!clear(nn,.05))continue;made++;var fl=new THREE.Mesh(fg,fm[made%3]),o2=new THREE.Group();fl.position.y=.08;o2.add(fl);place(o2,nn,0)}}
+  /* clouds and stars */
+  W.clouds=new THREE.Group();P.add(W.clouds);
+  for(var ci=0;ci<6;ci++){var cg=new THREE.Group(),cn=rndDir();if(Math.abs(cn.y)>.75){cn.y*=.5;cn.normalize()}
+    [[0,0,0,.6],[.6,-.05,.1,.42],[-.55,-.08,-.05,.38],[.15,.1,-.4,.34]].forEach(function(p){var b=ball(p[3],cloudMat,p[0],p[1],p[2],1);b.receiveShadow=false;cg.add(b)});
+    cg.quaternion.setFromUnitVectors(UP,cn);cg.position.copy(cn).multiplyScalar(R+3.6+rnd()*1.2);cg.scale.set(1,.6,1);W.clouds.add(cg)}
+  P.add(new THREE.Points(starGeo,starMat));
+  /* the other planets hang in the sky above their doors */
+  def.stops.forEach(function(s){var to=s.kind==='door'||s.kind==='exit'?s.to:null;if(!to)return;
+    var m=new THREE.Mesh(new THREE.IcosahedronGeometry(3,2),mat(DEFS[to].ground[0]));m.position.copy(s.n).multiplyScalar(34);P.add(m);W.moons.push(m);
+    var m2=new THREE.Mesh(new THREE.IcosahedronGeometry(.5,1),mat(DEFS[to].accent||0xF4F5F7));m2.position.copy(s.n).multiplyScalar(34).add(new THREE.Vector3(2.2,2.4,1));P.add(m2);W.moons.push(m2)});
+  return W;
+}
+
+/* the walker */
+var me=figure(GUN,ICE), player=me.g, legs=me.legs, arms=me.arms, letter=box(.3,.03,.2,0xFFFFFF,0,.6,.3);
+player.add(box(.26,.22,.12,mat(0xC98B4A),.2,.38,-.18));player.add(box(.05,.5,.05,mat(0xC98B4A),.1,.62,-.2));letter.rotation.x=-.5;player.add(letter);player.rotation.order='YXZ';player.position.set(0,R,0);scene.add(player);
+
+var rocket=(function(){var g=new THREE.Group();g.add(cyl(.42,.42,1.3,WALL,0,.5,0,10));var n=mesh(new THREE.ConeGeometry(.42,.7,10),0xD9534F);n.position.y=2.15;g.add(n);
+  for(var i=0;i<3;i++){var a=i*2.094,f=box(.08,.6,.5,0xD9534F,Math.sin(a)*.5,.3,Math.cos(a)*.5);f.rotation.y=a;g.add(f)}
+  g.add(ball(.16,glowMat,0,1.3,.38,1));g.add(cyl(.44,.44,.08,GUN,0,1.72,0,10));
+  var fl=new THREE.Mesh(new THREE.ConeGeometry(.3,1,8),new THREE.MeshBasicMaterial({color:0xF7A53B}));fl.rotation.x=Math.PI;fl.position.y=.05;g.add(fl);
+  g.scale.setScalar(.001);g.position.set(0,R,0);scene.add(g);return {g:g,flame:fl}})();
+var flight=null, veilOff=0;
+/* the camera passes through the moons while a planet drops or rises, so they shrink away for the flight */
+function moonSize(k){cur.moons.forEach(function(m){m.scale.setScalar(Math.max(.001,k))})}
+/* fade the flight title out before the veil gets its solid ground back, or the whole scene flashes */
+function landVeil(){var v=$('#veil');v.classList.add('off');clearTimeout(veilOff);veilOff=setTimeout(function(){v.classList.remove('fly','off')},400)}
+
+/* ---------- time of day ----------
+   The sky follows the visitor's own clock, so their time zone decides it: night, dawn, morning, noon,
+   golden hour, sunset, dusk. Day and Night are overrides; switching glides through the hours between. */
+function K(h,z,hz,w,sc,si,hs,hg,hi,cl,st,dk,gl,gs){return {h:h,z:new THREE.Color(z),hz:new THREE.Color(hz),w:w,sc:new THREE.Color(sc),si:si,hs:new THREE.Color(hs),hg:new THREE.Color(hg),hi:hi,cl:new THREE.Color(cl),st:st,dk:dk,gl:new THREE.Color(gl),gs:gs}}
+var NIGHT=[0x0A0F1E,0x1C2438,0,0xA9C4FF,.34,0x5E74A8,0x15181C,.6,0x3A424E,1,1,0x33467A,.35];
+var SKY=[K.apply(null,[0].concat(NIGHT)),K.apply(null,[4.7].concat(NIGHT)),
+ K(5.7, 0x252B57,0xB98197,0,  0xFFB38A,.32,0x9488B5,0x37323E,.52,0xA996AE,.55,.62,0xF0907A,.7),
+ K(6.6, 0x7E9FCB,0xFFCFA0,.1, 0xFFC27A,.48,0xFFE1C4,0xB5A493,.5, 0xFFE4CF,.05,.1, 0xFFB15E,.95),
+ K(8.6, 0xC9D9EA,0xF2F3F5,.85,0xFFF0D8,.6, 0xFFFFFF,0xCFD6DE,.52,0xFFFFFF,0,0,  0xFFF1D2,.35),
+ K(12.5,0xD3DFEC,0xF2F3F5,1,  0xFFF4E0,.62,0xFFFFFF,0xCFD6DE,.52,0xFFFFFF,0,0,  0xFFF8EA,.22),
+ K(16,  0xCCDAEA,0xF2F3F5,.85,0xFFE6C0,.6, 0xFFF7EC,0xCFD2D4,.52,0xFFFFFF,0,0,  0xFFE6BC,.35),
+ K(18,  0x96AFD2,0xFFC88E,.2, 0xFFAF58,.55,0xFFDDB8,0xB59C8A,.5, 0xFFDFC2,0,.05, 0xFF9C42,.85),
+ K(19.2,0x464C84,0xF0876A,0,  0xFF865A,.38,0xC497A6,0x473942,.48,0xD69C9E,.25,.45,0xFF7853,1),
+ K(20.3,0x191E40,0x574876,0,  0xB7A6E8,.34,0x7C78AE,0x211E2B,.54,0x55516D,.8,.86,0x7860A6,.55),
+ K.apply(null,[21.3].concat(NIGHT)),K.apply(null,[24].concat(NIGHT))];
+var RISE=6.3, SET=19.4;
+var tod={}, cA=new THREE.Color(), cB=new THREE.Color();
+['z','hz','sc','hs','hg','cl','gl'].forEach(function(k){tod[k]=new THREE.Color()});
+function mix(a,b,t){return cA.set(a).lerp(cB.set(b),t)}
+function sampleSky(h){var i=0;while(i<SKY.length-2&&SKY[i+1].h<=h)i++;var A=SKY[i],B=SKY[i+1],t=(h-A.h)/(B.h-A.h);t=t*t*(3-2*t);
+  ['z','hz','sc','hs','hg','cl','gl'].forEach(function(k){tod[k].copy(A[k]).lerp(B[k],t)});
+  ['w','si','hi','st','dk','gs'].forEach(function(k){tod[k]=A[k]+(B[k]-A[k])*t})}
+/* ?hour=19 previews a fixed time (for checking the sky) */
+var QH=parseFloat((location.search.match(/[?&]hour=([\d.]+)/)||[])[1]);
+function localHour(){if(QH>=0&&QH<24)return QH;var d=new Date();return d.getHours()+d.getMinutes()/60+d.getSeconds()/3600}
+function phase(h){return h<5?'Night':h<7?'Dawn':h<11.5?'Morning':h<13.5?'Noon':h<17?'Afternoon':h<19.5?'Evening':h<21?'Dusk':'Night'}
+var mode='live', hourNow=localHour(), tr=null, litH=-1, night=0, darkUI=null, lastPh='';
+var skyNow=new THREE.Color(0xF2F3F5), skyTo=new THREE.Color(0xF2F3F5);
+
+/* painted sky behind everything: zenith to horizon, plus a glow around the sun or moon */
+var bgC=document.createElement('canvas');bgC.width=256;bgC.height=256;var bgX=bgC.getContext('2d'),bgT=new THREE.CanvasTexture(bgC);scene.background=bgT;
+function css(c){return '#'+c.getHexString()}
+function rgba(c,a){return 'rgba('+(c.r*255|0)+','+(c.g*255|0)+','+(c.b*255|0)+','+a+')'}
+function blob(fn){var c=document.createElement('canvas');c.width=c.height=128;fn(c.getContext('2d'));var t=new THREE.CanvasTexture(c);return t}
+var haloT=blob(function(x){var g=x.createRadialGradient(64,64,0,64,64,64);g.addColorStop(0,'rgba(255,255,255,.9)');g.addColorStop(.25,'rgba(255,255,255,.35)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,128,128)});
+var sunT=blob(function(x){var g=x.createRadialGradient(64,64,40,64,64,52);g.addColorStop(0,'#fff');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,128,128)});
+var moonT=blob(function(x){x.fillStyle='#fff';x.beginPath();x.arc(64,64,46,0,7);x.fill();x.fillStyle='rgba(120,130,150,.18)';[[48,52,9],[78,70,12],[60,86,6],[82,44,5]].forEach(function(c){x.beginPath();x.arc(c[0],c[1],c[2],0,7);x.fill()})});
+function sprite(t,o){var m=new THREE.Sprite(new THREE.SpriteMaterial(Object.assign({map:t,transparent:true,depthWrite:false,fog:false},o||{})));scene.add(m);return m}
+var halo=sprite(haloT,{opacity:.6}), disc=sprite(sunT), mdisc=sprite(moonT);
+var vdir=new THREE.Vector3(), sunScr={x:.5,y:.2};
+/* the sun and moon arc across the strip of sky above the planet, rising from behind it on the left */
+function skyBody(p,o,size){var hh=Math.tan(camera.fov*Math.PI/360),el=(-.55+1.35*Math.sin(p*Math.PI))*hh;
+  vdir.set((p*2-1)*hh*camera.aspect*.92,el,-1).normalize().applyQuaternion(camera.quaternion);o.position.copy(camera.position).addScaledVector(vdir,150);o.scale.setScalar(size);return o.position}
+function light(){var h=hourNow;sampleSky(h);var dk=tod.dk;night=dk;
+  var hz=cA.copy(tod.hz).lerp(skyNow,tod.w).clone(),zn=tod.z.clone().lerp(skyNow,tod.w*.35);
+  var day=h>=RISE&&h<=SET,p=day?(h-RISE)/(SET-RISE):(((h-SET)+24)%24)/(24-(SET-RISE));
+  disc.visible=day;mdisc.visible=!day;var bp=skyBody(p,day?disc:mdisc,day?9:7.5);halo.position.copy(bp);halo.scale.setScalar(day?46:30);
+  disc.material.color.copy(tod.sc).lerp(cB.set(0xffffff),.45);halo.material.color.copy(tod.gl);halo.material.opacity=Math.min(1,.25+tod.gs*.6);
+  mdisc.material.opacity=Math.min(1,.2+dk*1.1);
+  v.copy(bp).project(camera);sunScr.x=v.x*.5+.5;sunScr.y=-v.y*.5+.5;
+  var gr=bgX.createLinearGradient(0,0,0,256);gr.addColorStop(0,css(zn));gr.addColorStop(.5,css(hz));gr.addColorStop(1,css(hz));bgX.fillStyle=gr;bgX.fillRect(0,0,256,256);
+  var rg=bgX.createRadialGradient(sunScr.x*256,sunScr.y*256,0,sunScr.x*256,sunScr.y*256,150);rg.addColorStop(0,rgba(tod.gl,(tod.gs*.75).toFixed(3)));rg.addColorStop(1,rgba(tod.gl,0));bgX.fillStyle=rg;bgX.fillRect(0,0,256,256);bgT.needsUpdate=true;
+  /* the lit side swings with the sun: low from the left in the morning, overhead at noon, low from the right at evening */
+  sun.position.set(-26*Math.cos(p*Math.PI),8+22*Math.sin(p*Math.PI),12);sun.intensity=tod.si;sun.color.copy(tod.sc);
+  hemi.intensity=tod.hi;hemi.color.copy(tod.hs);hemi.groundColor.copy(tod.hg);
+  winMat.color.copy(mix(0xBFD9EC,0xFFE9A8,dk));winMat.emissive.copy(mix(0x000000,0xE8C766,dk));
+  cloudMat.color.copy(tod.cl);lineMat.color.copy(mix(0x35393C,0xECEEF1,dk));starMat.opacity=tod.st;cur.lamps.forEach(function(l){l.intensity=1.1*dk});
+  var du=dk>=.4;var ph=phase(h);if(du!==darkUI||ph!==lastPh){if(du!==darkUI)document.documentElement.setAttribute('data-theme',du?'dark':'light');darkUI=du;lastPh=ph;paintTime()}
+  litH=h}
+function targetHour(){return mode==='day'?13:mode==='night'?23.2:localHour()}
+/* switching never jumps: it plays the hours in between, forward unless that is the long way round */
+function setMode(m){mode=m;var to=targetHour(),f=((to-hourNow)%24+24)%24,dist=f<=14?f:f-24;
+  if(reduce||Math.abs(dist)<.02){hourNow=to;tr=null;litH=-1}else tr={from:hourNow,dist:dist,t:0,dur:1.4+Math.abs(dist)*.13};paintTime()}
+function tickTime(dt){if(tr){tr.t+=dt;var k=Math.min(1,tr.t/tr.dur),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;hourNow=((tr.from+tr.dist*e)%24+24)%24;if(k>=1){tr=null;hourNow=targetHour()}}
+  else if(mode==='live')hourNow=localHour();
+  if(Math.abs(hourNow-litH)>.003)light()}
+var fmt=function(z){try{return new Intl.DateTimeFormat([],{hour:'numeric',minute:'2-digit',timeZone:z})}catch(e){return null}}, fMine=fmt(), fHis=fmt('America/Toronto'), lastTZ='';
+function paintTime(){var b=$('#mode'),lv=$('#live'),now=new Date(),dark=darkUI;
+  b.textContent=dark?'Day':'Night';b.setAttribute('aria-label',dark?'Switch to day':'Switch to night');
+  lv.innerHTML='';lv.appendChild(el('i','dot'));lv.appendChild(document.createTextNode(mode==='live'?phase(hourNow):'Use my time'));
+  lv.setAttribute('aria-pressed',mode==='live'?'true':'false');lv.setAttribute('aria-label',mode==='live'?'The sky follows your local time. It is '+phase(hourNow).toLowerCase()+' where you are':'Go back to the sky for your local time');
+  if(!fMine||!fHis)return;var mine=fMine.format(now),his=fHis.format(now),txt='The sky follows your time, '+mine+'. '+(mine===his?'Same as mine in Toronto.':'It is '+his+' for me in Toronto.');
+  if(txt!==lastTZ){lastTZ=txt;$('#tz').textContent=txt}}
+setInterval(paintTime,20000);
+$('#mode').addEventListener('click',function(){setMode(darkUI?'day':'night');canvas.focus()});
+$('#live').addEventListener('click',function(){setMode('live');canvas.focus()});
+
+/* ---------- interface ---------- */
+var tagBox=$('#tags'), tags=[];
+function paintList(){var n=0,tot=0;cur.stops.forEach(function(s,i){if(s.kind==='exit')return;tot++;var on=!!seen[skey(s)];if(on)n++;if(s.li)s.li.classList.toggle('seen',on);if(tags[i])tags[i].classList.toggle('seen',on)});
+  $('#count').textContent=(cur.key==='hub'?'Places ':'Stops ')+n+' of '+tot}
+function buildUI(){var d=cur.def,list=$('#list');list.textContent='';tagBox.textContent='';tags=[];
+  $('#title').textContent=d.name;$('#sub').textContent=d.sub||'A world on Sanket Pawar\'s planet';$('#back').hidden=cur.key==='hub';$('#back').textContent='← Back to '+(d.parent?DEFS[d.parent].name:'my planet');
+  cur.stops.forEach(function(s,i){var t=el('span','tag',s.name);tagBox.appendChild(t);tags.push(t);
+    var li=el('li'),b=el('button');b.appendChild(el('span','dot'));b.appendChild(document.createTextNode(s.name));li.appendChild(b);list.appendChild(li);s.li=li;
+    b.addEventListener('click',function(){stopTour();if(near===s&&primary){primary();return}target={n:s.n,stop:s.r+.06,to:s};canvas.focus()})});
+  paintList()}
+var shown=null, pg=0, secondary=null, delivered=!!seen['letter'];
+var LETTER={e:'Home',h:'You have a letter for this house.',p:['The mailbox is by the door.']};
+function cardFor(s){return cur.key==='hub'&&s.id==='home'&&!delivered?LETTER:s.card}
+function showCard(c,s,force){if(shown===c&&!force)return;if(shown!==c)pg=0;shown=c;primary=null;secondary=null;var box=$('#card');box.textContent='';box.scrollTop=0;
+  var pages=[{h:c.h,p:c.p}].concat(c.more||[]),cu=pages[pg]||pages[0];
+  if(c.e)box.appendChild(el('p','e',c.e));box.appendChild(el('h3',null,cu.h||c.h));(cu.p||[]).forEach(function(t){box.appendChild(el('p',null,t))});
+  if(c.mail&&!pg)box.appendChild(el('p','mail','sanketp9499@gmail.com'));
+  var acts=el('div','acts');
+  function btn(label,fn,main){var b=el('button',main?'main':null,label);if(main){b.appendChild(el('kbd',null,'E'));primary=fn}b.addEventListener('click',fn);acts.appendChild(b);return b}
+  if(c===LETTER)btn('Deliver the letter',function(){delivered=true;mark('letter');mark('hub:home');letter.visible=false;chime();showCard(s.card,s)},true);
+  else if(s&&s.kind==='door')btn('Enter '+s.name,function(){go(s.to)},true);
+  else if(s&&s.kind==='exit')btn(s.card.h,function(){go(s.to)},true);
+  else if(s&&s.img)btn('Look closer',function(){openLook(s)},true);
+  else if(c.mail){var cp=btn('Copy email',function(){var ok=function(){cp.firstChild.nodeValue='Copied'};try{navigator.clipboard.writeText('sanketp9499@gmail.com').then(ok,function(){cp.firstChild.nodeValue='Select the address above'})}catch(e){cp.firstChild.nodeValue='Select the address above'}},true)}
+  if(pages.length>1){var nx=function(){pg=(pg+1)%pages.length;showCard(c,s,true)},nb=el('button',null,pg<pages.length-1?'More':'Start again');nb.appendChild(el('kbd',null,'Space'));nb.appendChild(document.createTextNode((pg+1)+' of '+pages.length));nb.addEventListener('click',nx);acts.appendChild(nb);secondary=nx}
+  (c.links||[]).forEach(function(l){var a=el('a',null,l[0]);a.href=l[1];a.target='_blank';a.rel='noopener';acts.appendChild(a)});
+  if(acts.childNodes.length)box.appendChild(acts)}
+function openLook(s){$('#lookI').src='assets/'+s.img[0];$('#lookI').alt=s.img[2];$('#lookC').textContent=s.img[2];$('#look').hidden=false;lookOpen=true;$('#lookX').focus()}
+function closeLook(){$('#look').hidden=true;lookOpen=false;canvas.focus()}
+$('#lookX').addEventListener('click',closeLook);$('#look').addEventListener('click',function(e){if(e.target===this)closeLook()});
+$('#back').addEventListener('click',function(){go(cur.def.parent||'hub')});
+
+var AC=null, LIM=null, BUS=null, soundOn=false, musicOn=false, MUS=null;
+function ensureAC(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){return false}}try{AC.resume()}catch(e){}return true}
+/* sound effects and music share one limiter so nothing distorts */
+function lim(){if(LIM)return LIM;LIM=AC.createDynamicsCompressor();LIM.threshold.value=-10;LIM.knee.value=6;LIM.ratio.value=12;LIM.attack.value=.003;LIM.release.value=.12;LIM.connect(AC.destination);return LIM}
+function bus(){if(BUS)return BUS;BUS=AC.createGain();BUS.gain.value=6;BUS.connect(lim());return BUS}
+function tone(f,dur,type,vol){if(!soundOn||!AC)return;try{var o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime;o.type=type||'sine';o.frequency.value=f;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol||.05,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(bus());o.start(t);o.stop(t+dur+.02)}catch(e){}}
+function chime(){tone(660,.3,'sine',.06);setTimeout(function(){tone(990,.4,'sine',.05)},120)}
+$('#snd').addEventListener('click',function(){soundOn=!soundOn;if(soundOn&&!ensureAC())soundOn=false;
+  this.textContent=soundOn?'Sound on':'Sound off';this.setAttribute('aria-pressed',soundOn?'true':'false');chime();canvas.focus()});
+
+/* music: a slow ambient piece written live by the browser, in a different key on every planet */
+var ROOT={hub:261.63,about:220,skillay:293.66,ciie:349.23,ascend:196,playground:246.94,hunter:329.63},
+  CHORDS=[[0,4,7],[-3,0,4],[-7,-3,0],[-5,-1,2]], PENTA=[0,2,4,7,9,12,14,16], BEAT=.6;
+function semi(r,s){return r*Math.pow(2,s/12)}
+function mnote(f,t,dur,vol,type,att){var o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+att);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(MUS.lp);o.start(t);o.stop(t+dur+.05)}
+function musicNode(){if(MUS)return MUS;var out=AC.createGain(),lp=AC.createBiquadFilter(),dl=AC.createDelay(1),fb=AC.createGain(),wet=AC.createGain();
+  out.gain.value=.0001;lp.type='lowpass';lp.frequency.value=1500;dl.delayTime.value=BEAT*.75;fb.gain.value=.3;wet.gain.value=.3;
+  lp.connect(out);lp.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(wet);wet.connect(out);out.connect(lim());
+  MUS={out:out,lp:lp,next:AC.currentTime+.1,beat:0,step:3,timer:0};return MUS}
+function musicTick(){if(!AC||!MUS)return;var m=MUS,quiet=night>.5;if(m.next<AC.currentTime)m.next=AC.currentTime+.05;
+  while(m.next<AC.currentTime+.8){var t=m.next,b=m.beat,r=ROOT[cur.key]||ROOT.hub;
+    if(b%8===0){var ch=CHORDS[(b/8|0)%4];ch.forEach(function(s){mnote(semi(r/2,s),t,BEAT*9,.012,'triangle',1.6);mnote(semi(r/2,s),t,BEAT*9,.008,'sine',2)});mnote(semi(r/4,ch[0]),t,BEAT*7,.03,'sine',.3)}
+    if(Math.random()<(quiet?.3:.45)){m.step=Math.max(0,Math.min(PENTA.length-1,m.step+[-2,-1,-1,1,1,2][Math.random()*6|0]));mnote(semi(r,PENTA[m.step]),t,1.4,.022,'sine',.012)}
+    m.next+=BEAT;m.beat++}}
+function setMusic(on){musicOn=on;if(on&&!ensureAC()){musicOn=false;return}
+  if(!AC)return;var m=musicNode(),t=AC.currentTime;m.out.gain.cancelScheduledValues(t);m.out.gain.setTargetAtTime(musicOn?3:.0001,t,.8);
+  clearInterval(m.timer);if(musicOn){if(m.next<t)m.next=t+.1;m.timer=setInterval(musicTick,200);musicTick()}}
+$('#mus').addEventListener('click',function(){setMusic(!musicOn);this.textContent=musicOn?'Music on':'Music off';this.setAttribute('aria-pressed',musicOn?'true':'false');canvas.focus()});
+document.addEventListener('visibilitychange',function(){if(!AC)return;try{if(document.hidden)AC.suspend();else if(soundOn||musicOn)AC.resume()}catch(e){}});
+var tour=null;
+function stopTour(){if(!tour)return;tour=null;var b=$('#tour');b.textContent='Quick tour';b.setAttribute('aria-pressed','false')}
+$('#tour').addEventListener('click',function(){if(tour){stopTour();return}tour={i:-1,wait:0,arm:false};target=null;this.textContent='Stop tour';this.setAttribute('aria-pressed','true');canvas.focus()});
+var gateOpen=true;
+function openGate(on){gateOpen=on;$('#gate').hidden=!on;$('#app').classList.toggle('gated',on)}
+$('#explore').addEventListener('click',function(){openGate(false);if(cur)cur.planet.quaternion.identity();canvas.focus()});
+var hubQ=null;
+function setWorld(key){if(cur){if(cur.key==='hub')hubQ=cur.planet.quaternion.clone();scene.remove(cur.planet)}
+  cur=worlds[key]||(worlds[key]=makeWorld(key));scene.add(cur.planet);cur.planet.scale.setScalar(1);cur.planet.position.y=0;if(key!=='hub')cur.planet.quaternion.identity();
+  moonSize(flight?.001:1);skyTo.set(cur.def.sky);cur.pop=1;near=null;target=null;shown=null;keys={};ptr=null;stopTour();letter.visible=key==='hub'&&!delivered;buildUI();light();if(key!=='hub'){mark('w:'+key);chime()}}
+function go(key){if(busy||!DEFS[key])return;busy=true;stopTour();$('#veilT').textContent=key==='hub'?'Back to my planet':DEFS[key].name;
+  if(reduce){var v=$('#veil');v.classList.add('on');setTimeout(function(){setWorld(key);cur.pop=1;setTimeout(function(){v.classList.remove('on');busy=false;canvas.focus()},420)},380);return}
+  flight={to:key,ph:0,t:0};rocket.g.scale.setScalar(.001);rocket.g.position.y=R;rocket.g.visible=true;clearTimeout(veilOff);$('#veil').classList.remove('off');$('#veil').classList.add('fly');$('#app').classList.add('flying');tone(180,.9,'sawtooth',.025);tone(360,.9,'triangle',.03)}
+
+/* ---------- input ---------- */
+var keys={}, target=null, ptr=null, W_=1, H_=1, pScr={x:0,y:0};
+var KEYMAP={ArrowUp:'u',KeyW:'u',ArrowDown:'d',KeyS:'d',ArrowLeft:'l',KeyA:'l',ArrowRight:'r',KeyD:'r'};
+window.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){if(lookOpen)closeLook();return}
+  if(lookOpen||busy||gateOpen||e.metaKey||e.ctrlKey||e.altKey)return;
+  var tag=(document.activeElement&&document.activeElement.tagName)||'';
+  if(KEYMAP[e.code]){keys[KEYMAP[e.code]]=1;target=null;stopTour();e.preventDefault();return}
+  if(e.code==='Space'&&secondary&&tag!=='BUTTON'&&tag!=='A'){secondary();e.preventDefault();return}
+  if((e.code==='KeyE'||(e.code==='Enter'&&tag!=='BUTTON'&&tag!=='A'))&&primary){primary();e.preventDefault()}});
+window.addEventListener('keyup',function(e){if(KEYMAP[e.code])keys[KEYMAP[e.code]]=0});
+window.addEventListener('blur',function(){keys={};ptr=null});
+var ray=new THREE.Raycaster();
+function local(e){var b=canvas.getBoundingClientRect();return {x:e.clientX-b.left,y:e.clientY-b.top}}
+canvas.addEventListener('pointerdown',function(e){if(busy||gateOpen)return;stopTour();var p=local(e);ptr={x0:p.x,y0:p.y,x:p.x,y:p.y,id:e.pointerId,t:performance.now(),drag:false};target=null;try{canvas.setPointerCapture(e.pointerId)}catch(x){}});
+canvas.addEventListener('pointermove',function(e){if(!ptr||e.pointerId!==ptr.id)return;var p=local(e);ptr.x=p.x;ptr.y=p.y;if(Math.hypot(p.x-ptr.x0,p.y-ptr.y0)>8)ptr.drag=true});
+function up(e){if(!ptr||e.pointerId!==ptr.id)return;
+  if(e.type==='pointerup'&&!ptr.drag&&performance.now()-ptr.t<350){ray.setFromCamera({x:ptr.x/W_*2-1,y:-(ptr.y/H_*2-1)},camera);var hit=ray.intersectObject(cur.ground)[0];
+    if(hit)target={n:hit.point.clone().applyQuaternion(cur.planet.quaternion.clone().invert()).normalize(),stop:.03}}
+  ptr=null}
+canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);
+
+/* ---------- loop ---------- */
+var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+var d=new THREE.Vector3(),axis=new THREE.Vector3(),q=new THREE.Quaternion(),inv=new THREE.Quaternion(),qy=new THREE.Quaternion(),pl=new THREE.Vector3(),v=new THREE.Vector3(),sg=new THREE.Vector3();
+var heading=0,walkT=0,clock=new THREE.Clock();
+function resize(){var b=canvas.getBoundingClientRect();W_=b.width||1;H_=b.height||1;renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.setSize(W_,H_,false);
+  var tall=W_/H_<.85;camera.fov=tall?52:40;camera.position.set(0,tall?R+13:R+10.5,tall?17:15.5);camera.aspect=W_/H_;camera.lookAt(0,R+(tall?-1.5:.2),0);camera.updateProjectionMatrix();camera.updateMatrixWorld();
+  v.set(0,R+.6,0).project(camera);pScr.x=(v.x*.5+.5)*W_;pScr.y=(-v.y*.5+.5)*H_;if(cur)light()}
+window.addEventListener('resize',resize);
+function faceCam(o){v.copy(camera.position).applyQuaternion(inv).sub(o.group.position).applyQuaternion(o.q0i);qy.setFromAxisAngle(UP,Math.atan2(v.x,v.z));o.group.quaternion.copy(o.q0).multiply(qy)}
+function walk(dx,dz,ang){d.set(dx,0,dz);axis.crossVectors(d,UP).normalize();q.setFromAxisAngle(axis,ang);cur.planet.quaternion.premultiply(q)}
+
+function frame(){
+  var dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime,dx=0,dz=0,walking=false,P=cur.planet;
+  if(gateOpen&&!reduce){walk(1,0,dt*.09);P.quaternion.normalize()}
+  if(flight){var F=flight,k,e;F.t+=dt;rocket.flame.scale.y=.7+Math.random()*.7;
+    if(F.ph===0){k=Math.min(1,F.t/.35);e=k*k*(3-2*k);player.scale.setScalar(Math.max(.001,1-e));rocket.g.scale.setScalar(Math.max(.001,e));moonSize(1-e);if(k>=1){player.visible=false;F.ph=1;F.t=0}}
+    else if(F.ph===1){k=Math.min(1,F.t/1.2);e=k*k*(3-2*k);rocket.g.position.y=R+5*e;rocket.g.rotation.y+=dt*(.6+3*k);P.position.y=-60*k*k*k;
+      if(k>=1){setWorld(F.to);P=cur.planet;P.position.y=-60;F.ph=2;F.t=0}}
+    else if(F.ph===2){k=Math.min(1,F.t/1.5);e=1-Math.pow(1-k,3);P.position.y=-60*(1-e);rocket.g.position.y=R+5*(1-k*k*(3-2*k));rocket.g.rotation.y+=dt*(3.6-3*k);
+      if(k>=1){P.position.y=0;rocket.g.position.y=R;player.visible=true;player.scale.setScalar(.001);F.ph=3;F.t=0}}
+    else{k=Math.min(1,F.t/.35);e=k*k*(3-2*k);player.scale.setScalar(Math.max(.001,e));rocket.g.scale.setScalar(Math.max(.001,1-e));moonSize(e);
+      if(k>=1){player.scale.setScalar(1);rocket.g.scale.setScalar(.001);moonSize(1);flight=null;busy=false;landVeil();$('#app').classList.remove('flying');canvas.focus()}}}
+  if(tour&&!lookOpen&&!busy&&!gateOpen&&!target){
+    if(tour.arm){tour.arm=false;tour.wait=4}
+    else if(tour.wait>0)tour.wait-=dt;
+    else{var tl=cur.stops.filter(function(s){return s.kind!=='exit'});tour.i++;if(tour.i>=tl.length)stopTour();else{target={n:tl[tour.i].n,stop:tl[tour.i].r+.06};tour.arm=true}}}
+  if(!lookOpen&&!busy&&!gateOpen){
+    dx=(keys.r?1:0)-(keys.l?1:0);dz=(keys.d?1:0)-(keys.u?1:0);
+    if(!dx&&!dz&&ptr&&(ptr.drag||performance.now()-ptr.t>180)){var mx=ptr.x-pScr.x,my=ptr.y-pScr.y;if(Math.hypot(mx,my)>26){dx=mx;dz=my}}
+    else if(!dx&&!dz&&target){v.copy(target.n).applyQuaternion(P.quaternion);if(v.y>Math.cos(target.stop))target=null;else{dx=v.x;dz=v.z}}
+  }
+  var l=Math.hypot(dx,dz);
+  if(l>.001){dx/=l;dz/=l;walk(dx,dz,5*dt/R);walking=true;
+    for(var i=0;i<cur.solids.length;i++){var s=cur.solids[i];sg.copy(s.n).applyQuaternion(P.quaternion);
+      if(sg.y>Math.cos(s.r)){var a=Math.acos(Math.min(1,sg.y)),hx=-sg.x,hz=-sg.z,hl=Math.hypot(hx,hz);if(hl<1e-4){hx=-dx;hz=-dz;hl=1}hx/=hl;hz/=hl;
+        var bx=hx-hz*.18,bz=hz+hx*.18,bl=Math.hypot(bx,bz);walk(bx/bl,bz/bl,s.r-a)}}
+    P.quaternion.normalize();
+    var want=Math.atan2(dx,dz),diff=Math.atan2(Math.sin(want-heading),Math.cos(want-heading));heading+=diff*Math.min(1,dt*12);player.rotation.y=heading}
+  if(walking){var st0=Math.floor(walkT/Math.PI);walkT+=dt*12;if(Math.floor(walkT/Math.PI)!==st0)tone(230+Math.random()*50,.07,'triangle',.045)}
+  var sw=walking?Math.sin(walkT)*.7:0;legs[0].rotation.x=sw;legs[1].rotation.x=-sw;arms[0].rotation.x=-sw*.8;arms[1].rotation.x=sw*.8;
+  if(cur.pop<1){cur.pop=Math.min(1,cur.pop+dt*2.2);var e=1-Math.pow(1-cur.pop,3);P.scale.setScalar(reduce?1:.8+.2*e)}
+  player.position.y=R+(walking?Math.abs(Math.sin(walkT))*.06:0);player.rotation.x=walking?.1:0;
+
+  if(skyNow.r!==skyTo.r||skyNow.g!==skyTo.g||skyNow.b!==skyTo.b){skyNow.lerp(skyTo,Math.min(1,dt*2.5));if(Math.abs(skyNow.r-skyTo.r)+Math.abs(skyNow.g-skyTo.g)+Math.abs(skyNow.b-skyTo.b)<.004)skyNow.copy(skyTo);litH=-1}
+  tickTime(dt);
+  if(!reduce){cur.clouds.rotation.y+=dt*.025;for(var k=0;k<cur.anim.length;k++)cur.anim[k](t)}
+
+  inv.copy(P.quaternion).invert();pl.copy(UP).applyQuaternion(inv);var best=null,bd=-1;
+  for(var j=0;j<cur.stops.length;j++){var st=cur.stops[j],dd=pl.dot(st.n);
+    if(dd>Math.cos(st.r+(st.kind==='show'?.26:.2))&&dd>bd){bd=dd;best=st}
+    if(st.face)faceCam(st);
+    sg.copy(st.n).applyQuaternion(P.quaternion);v.copy(sg).multiplyScalar(R+(st.h||3));d.copy(v).sub(camera.position);var tt=-camera.position.dot(d)/d.lengthSq();
+    var vis=!(tt>0&&tt<1&&d.multiplyScalar(tt).add(camera.position).length()<R-.3)&&st!==best;v.project(camera);var tg=tags[j];
+    if(tg){tg.style.opacity=vis?1:0;tg.style.transform='translate('+((v.x*.5+.5)*W_).toFixed(1)+'px,'+((-v.y*.5+.5)*H_).toFixed(1)+'px) translate(-50%,-100%)'}}
+  for(j=0;j<cur.faces.length;j++)faceCam(cur.faces[j]);
+  if(best!==near){near=best;if(near&&near.kind!=='door'&&near.kind!=='exit'&&cardFor(near)!==LETTER){if(!seen[skey(near)])tone(784,.2,'sine',.06);mark(skey(near))}}
+  if(near)showCard(cardFor(near),near);else if(pl.y>Math.cos(.3)||!shown)showCard(cur.def.intro,null);
+
+  renderer.render(scene,camera);
+  requestAnimationFrame(frame);
+}
+
+function start(data){var hs=(location.hash||'').slice(1),k=data&&DEFS[data.w]?data.w:(DEFS[hs]?hs:'hub');openGate(!(data&&data.q)&&k==='hub');setWorld(k);if(data&&data.q)try{cur.planet.quaternion.fromArray(data.q)}catch(e){}
+  skyNow.copy(skyTo);cur.pop=1;hourNow=targetHour();resize();paintTime();
+  var ahead=Object.keys(DEFS);(function nx(){var k2=ahead.shift();if(!k2)return;if(!flight&&!worlds[k2])worlds[k2]=makeWorld(k2);else if(flight)ahead.unshift(k2);setTimeout(nx,700)})();canvas.focus({preventScroll:true});requestAnimationFrame(frame)}
+var hot=window.claude&&window.claude.hot;
+if(hot&&hot.snapshot)try{hot.snapshot(function(){return {w:cur.key,q:cur.planet.quaternion.toArray()}})}catch(e){}
+if(hot&&hot.ready)hot.ready(start);else start((hot&&hot.data)||{});
+})();
+</script>
+
+</html>
